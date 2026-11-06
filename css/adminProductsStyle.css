@@ -1,0 +1,36 @@
+/* Products page */
+        .page-container { 
+            max-width: 1200px; 
+			margin: 30px auto; 
+			padding: 20px;
+		}
+        .table-wrapper {
+			overflow-x: auto;
+		}
+		
+        .action-link { 
+		  margin-right: 10px;
+		}
+        .add-button, .edit-button, .delet-button, .action-button {
+            display: inline-block; 
+			padding: 10px 14px;
+            background: #6b3f2a; 
+			color: white;
+            text-decoration: none; 
+			border: none; 
+			border-radius: 5px;
+            cursor: pointer;
+        }
+        .status-active {
+			color: green;
+ 			font-weight: bold;
+			}
+        .status-inactive {
+			color: #a33;
+			font-weight: bold;
+		}
+        .product-image {
+			width: 65px; 
+			height: 65px;
+			object-fit: cover;
+		}

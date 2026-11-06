@@ -1,0 +1,26 @@
+# Local configuration and secrets
+.env
+.env.*
+!.env.example
+includes/database.php
+config.local.php
+config/secrets.php
+includes/database.php
+includes/mail_config.php
+payfast_config.php
+
+# Database exports and backups
+*.sql
+*.sql.zip
+*.sql.gz
+*.bak
+*.backup
+
+# Logs and temporary files
+*.log
+.DS_Store
+Thumbs.db
+
+# Local dependencies and editor settings
+/vendor/
+/.idea/
