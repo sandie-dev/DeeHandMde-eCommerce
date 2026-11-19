@@ -50,6 +50,7 @@ $products = $stmt->fetchAll(PDO::FETCH_ASSOC);
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Manage Stock - DeeHandMade</title>
     <link rel="stylesheet" href="../css/style.css">
+	 <link rel="stylesheet" href="../css/listStyle.css">
     <link rel="stylesheet" href="../css/adminProductsStyle.css">
     <style>
         .page-container { max-width: 1100px; margin: 30px auto; padding: 20px; }
@@ -64,7 +65,7 @@ $products = $stmt->fetchAll(PDO::FETCH_ASSOC);
     </style>
 </head>
 <body>
-
+<?php require_once __DIR__ . "/../includes/backButton.php"; ?>
 <header>
     <h1>DeeHandMade Admin</h1>
     <nav>

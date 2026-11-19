@@ -66,6 +66,19 @@ if (
     checkoutFail("One or more delivery fields are too long.");
 }
 
+// Basic server-side phone validation.
+if (!preg_match('/^(\+27|0)[6-8][0-9]{8}$/', $deliveryPhone)) {
+    checkoutFail("Please enter a valid South African mobile number.");
+}
+
+// Basic server-side street address validation.
+if (
+    strlen($deliveryAddress) < 5 ||
+    !preg_match('/[A-Za-z]/', $deliveryAddress)
+) {
+    checkoutFail("Please enter a valid delivery street address.");
+}
+
 if (
     empty($_SESSION["cart"]) ||
     !is_array($_SESSION["cart"])
@@ -86,6 +99,7 @@ try {
     $items = [];
 
     foreach ($cart as $id => $quantity) {
+
         $id = filter_var($id, FILTER_VALIDATE_INT);
         $quantity = filter_var($quantity, FILTER_VALIDATE_INT);
 
@@ -102,6 +116,7 @@ try {
              WHERE id = ?
              FOR UPDATE"
         );
+
         $stmt->execute([$id]);
         $product = $stmt->fetch(PDO::FETCH_ASSOC);
 
@@ -142,8 +157,8 @@ try {
         );
     }
 
-    // Create the pending order.
-    // Total includes delivery.
+    // Create the new order with separate payment and delivery statuses.
+    // The old status column is retained for compatibility.
     $stmt = $pdo->prepare(
         "INSERT INTO orders
         (
@@ -151,6 +166,8 @@ try {
             total,
             delivery_fee,
             status,
+            payment_status,
+            delivery_status,
             payment_method,
             delivery_name,
             delivery_phone,
@@ -158,11 +175,14 @@ try {
             delivery_city,
             delivery_postal_code
         )
-        VALUES (?, ?, ?, 'Pending', 'PayFast', ?, ?, ?, ?, ?)"
+        VALUES (
+            ?, ?, ?, 'Pending', 'Pending', 'Not Started',
+            'PayFast', ?, ?, ?, ?, ?
+        )"
     );
 
     $stmt->execute([
-        $_SESSION["user_id"],
+        (int)$_SESSION["user_id"],
         number_format($total, 2, ".", ""),
         number_format($deliveryFee, 2, ".", ""),
         $deliveryName,
@@ -174,6 +194,19 @@ try {
 
     $orderId = (int)$pdo->lastInsertId();
 
+    // Save the customer's street address as their default address.
+    // This affects future checkouts, not existing order records.
+    $saveAddress = $pdo->prepare(
+        "UPDATE users
+         SET delivery_address = ?
+         WHERE id = ? AND role = 'customer'"
+    );
+
+    $saveAddress->execute([
+        $deliveryAddress,
+        (int)$_SESSION["user_id"]
+    ]);
+
     // Save order items.
     // Item prices remain product prices,
     // without delivery being added to each item.
@@ -184,6 +217,7 @@ try {
     );
 
     foreach ($items as $item) {
+
         $itemStmt->execute([
             $orderId,
             $item["id"],
@@ -201,6 +235,7 @@ try {
     exit;
 
 } catch (Throwable $e) {
+
     if ($pdo->inTransaction()) {
         $pdo->rollBack();
     }

@@ -207,12 +207,12 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && $error === "") {
 </head>
 
 <body>
-
+<?php require_once __DIR__ . "/../includes/backButton.php"; ?>
 <header>
     <h1>DeeHandMade Admin</h1>
 
     <nav>
-        <a href="../main.php">Dashboard</a>
+        <a href="../admin.php">Dashboard</a>
         <a href="products.php">Products</a>
         <a href="addProducts.php">Add Product</a>
         <a href="../logout.php">Logout</a>

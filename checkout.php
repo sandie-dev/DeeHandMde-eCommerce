@@ -1,4 +1,3 @@
-
 <?php
 require_once "includes/authentication.php";
 require_once "includes/database.php";
@@ -20,8 +19,9 @@ if (
 // Fixed delivery fee per order.
 $deliveryFee = 25.00;
 
+// Retrieve the customer's details, including saved delivery address.
 $stmt = $pdo->prepare(
-    "SELECT id, name, email
+    "SELECT id, name, email, delivery_address
      FROM users
      WHERE id = ?
      LIMIT 1"
@@ -37,9 +37,12 @@ if (!$user) {
 $products = [];
 $subtotal = 0;
 $error = $_SESSION["checkout_error"] ?? "";
+
 unset($_SESSION["checkout_error"]);
 
+// Retrieve and validate cart products.
 foreach ($_SESSION["cart"] as $id => $quantity) {
+
     $id = filter_var($id, FILTER_VALIDATE_INT);
     $quantity = filter_var($quantity, FILTER_VALIDATE_INT);
 
@@ -53,13 +56,14 @@ foreach ($_SESSION["cart"] as $id => $quantity) {
          WHERE id = ?
          LIMIT 1"
     );
+
     $stmt->execute([$id]);
     $product = $stmt->fetch(PDO::FETCH_ASSOC);
 
     if (
         !$product ||
-        (int)$product["active"] !== 1 ||
-        (int)$product["stock"] < $quantity
+        (int) $product["active"] !== 1 ||
+        (int) $product["stock"] < $quantity
     ) {
         $error =
             "A product is unavailable or there is not enough stock. " .
@@ -68,10 +72,12 @@ foreach ($_SESSION["cart"] as $id => $quantity) {
     }
 
     $product["quantity"] = $quantity;
+
     $product["subtotal"] =
-        (float)$product["price"] * $quantity;
+        (float) $product["price"] * $quantity;
 
     $subtotal += $product["subtotal"];
+
     $products[] = $product;
 }
 
@@ -89,21 +95,27 @@ if (empty($products)) {
 $subtotal = round($subtotal, 2);
 $total = round($subtotal + $deliveryFee, 2);
 
+// Create checkout CSRF token.
 if (empty($_SESSION["checkout_token"])) {
     $_SESSION["checkout_token"] = bin2hex(random_bytes(32));
 }
 ?>
+
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
+
     <meta name="viewport"
           content="width=device-width, initial-scale=1">
 
     <title>Checkout | DeeHandMade</title>
 
     <style>
-        * { box-sizing: border-box; }
+        * {
+            box-sizing: border-box;
+        }
 
         body {
             margin: 0;
@@ -160,6 +172,11 @@ if (empty($_SESSION["checkout_token"])) {
             font: inherit;
         }
 
+        input[readonly] {
+            background: #f3f0ed;
+            color: #665d56;
+        }
+
         input[type="checkbox"] {
             width: 18px;
             height: 18px;
@@ -180,6 +197,10 @@ if (empty($_SESSION["checkout_token"])) {
             text-decoration: none;
             cursor: pointer;
             font: inherit;
+        }
+
+        button:hover, .button:hover {
+            background: #4f2d1e;
         }
 
         .line {
@@ -219,16 +240,21 @@ if (empty($_SESSION["checkout_token"])) {
             }
         }
     </style>
+
 </head>
 
 <body>
+<?php require_once __DIR__ . "/includes/backButton.php"; ?>
 <header>
     <a href="main.php"><strong>DeeHandMade</strong></a>
+
     &nbsp; | &nbsp;
+
     <a href="cart.php">Back to cart</a>
 </header>
 
 <main>
+
     <h1>Checkout</h1>
 
     <p class="muted">
@@ -236,93 +262,141 @@ if (empty($_SESSION["checkout_token"])) {
     </p>
 
     <?php if ($error !== ""): ?>
+
         <p class="error">
-            <?php echo htmlspecialchars($error); ?>
+            <?php echo htmlspecialchars($error, ENT_QUOTES, "UTF-8"); ?>
         </p>
+
     <?php endif; ?>
 
     <div class="layout">
 
+        <!-- DELIVERY DETAILS -->
         <section class="panel">
+
             <h2>Delivery details</h2>
 
             <form action="processCheckout.php" method="POST">
 
-                <input type="hidden"
-                       name="checkout_token"
-                       value="<?php echo htmlspecialchars(
-                           $_SESSION["checkout_token"]
-                       ); ?>">
+                <input
+                    type="hidden"
+                    name="checkout_token"
+                    value="<?php echo htmlspecialchars(
+                        $_SESSION["checkout_token"],
+                        ENT_QUOTES,
+                        "UTF-8"
+                    ); ?>"
+                >
 
                 <label for="delivery_name">
                     Recipient's full name
                 </label>
-                <input id="delivery_name"
-                       name="delivery_name"
-                       maxlength="150"
-                       autocomplete="name"
-                       required
-                       value="<?php echo htmlspecialchars(
-                           $user["name"]
-                       ); ?>">
 
-                <label for="email">Email address</label>
-                <input id="email"
-                       type="email"
-                       readonly
-                       value="<?php echo htmlspecialchars(
-                           $user["email"]
-                       ); ?>">
+                <input
+                    id="delivery_name"
+                    name="delivery_name"
+                    maxlength="150"
+                    autocomplete="name"
+                    required
+                    value="<?php echo htmlspecialchars(
+                        $user["name"],
+                        ENT_QUOTES,
+                        "UTF-8"
+                    ); ?>"
+                >
+
+                <label for="email">
+                    Email address
+                </label>
+
+                <input
+                    id="email"
+                    type="email"
+                    readonly
+                    value="<?php echo htmlspecialchars(
+                        $user["email"],
+                        ENT_QUOTES,
+                        "UTF-8"
+                    ); ?>"
+                >
 
                 <label for="delivery_phone">
                     Phone number
                 </label>
-                <input id="delivery_phone"
-                       name="delivery_phone"
-                       type="tel"
-                       maxlength="30"
-                       autocomplete="tel"
-                       required>
+
+                <input
+                    id="delivery_phone"
+                    name="delivery_phone"
+                    type="tel"
+                    maxlength="12"
+                    minlength="10"
+                    autocomplete="tel"
+                    pattern="(\+27|0)[6-8][0-9]{8}"
+                    title="Enter a valid number, e.g. 0712345678 or +27712345678"
+                    required
+                >
 
                 <label for="delivery_address">
                     Street address
                 </label>
-                <input id="delivery_address"
-                       name="delivery_address"
-                       maxlength="255"
-                       autocomplete="street-address"
-                       required>
+
+                <input
+                    id="delivery_address"
+                    name="delivery_address"
+                    placeholder="e.g. 15 Main Street, Apartment 4"
+                    minlength="5"
+                    maxlength="255"
+                    pattern="(?=.*[A-Za-z])[A-Za-z0-9][A-Za-z0-9\s,.'/#-]{4,254}"
+                    title="Enter a valid street address containing letters and at least 5 characters."
+                    autocomplete="street-address"
+                    value="<?php echo htmlspecialchars(
+                        $user["delivery_address"] ?? "",
+                        ENT_QUOTES,
+                        "UTF-8"
+                    ); ?>"
+                    required
+                >
 
                 <label for="delivery_city">
                     City or town
                 </label>
-                <input id="delivery_city"
-                       name="delivery_city"
-                       maxlength="100"
-                       autocomplete="address-level2"
-                       required>
+
+                <input
+                    id="delivery_city"
+                    name="delivery_city"
+                    maxlength="100"
+                    autocomplete="address-level2"
+                    required
+                >
 
                 <label for="delivery_postal_code">
                     Postal code
                 </label>
-                <input id="delivery_postal_code"
-                       name="delivery_postal_code"
-                       maxlength="20"
-                       autocomplete="postal-code"
-                       required>
+
+                <input
+                    id="delivery_postal_code"
+                    name="delivery_postal_code"
+                    maxlength="20"
+                    autocomplete="postal-code"
+                    required
+                >
 
                 <div class="confirmation">
-                    <input type="checkbox"
-                           id="delivery_confirm"
-                           name="delivery_confirm"
-                           value="1"
-                           required>
+
+                    <input
+                        type="checkbox"
+                        id="delivery_confirm"
+                        name="delivery_confirm"
+                        value="1"
+                        required
+                    >
 
                     <label for="delivery_confirm">
                         I confirm that my delivery details are
                         correct and I acknowledge the R25.00
                         delivery fee and the total payable.
                     </label>
+
                 </div>
 
                 <button type="submit">
@@ -335,51 +409,71 @@ if (empty($_SESSION["checkout_token"])) {
                 </p>
 
             </form>
+
         </section>
 
+        <!-- ORDER SUMMARY -->
         <aside class="panel">
+
             <h2>Your order</h2>
 
             <?php foreach ($products as $product): ?>
+
                 <div class="line">
+
                     <span>
                         <?php echo htmlspecialchars(
-                            $product["name"]
+                            $product["name"],
+                            ENT_QUOTES,
+                            "UTF-8"
                         ); ?>
-                        × <?php echo (int)$product["quantity"]; ?>
+
+                        × <?php echo (int) $product["quantity"]; ?>
                     </span>
 
                     <span>
                         R<?php echo number_format(
-                            $product["subtotal"], 2
+                            $product["subtotal"],
+                            2
                         ); ?>
                     </span>
+
                 </div>
+
             <?php endforeach; ?>
 
             <hr>
 
             <div class="line">
+
                 <span>Subtotal</span>
+
                 <span>
                     R<?php echo number_format($subtotal, 2); ?>
                 </span>
+
             </div>
 
             <div class="line">
+
                 <span>Delivery</span>
+
                 <span>
                     R<?php echo number_format($deliveryFee, 2); ?>
                 </span>
+
             </div>
 
             <hr>
 
             <div class="line">
+
                 <strong>Total payable</strong>
+
                 <strong>
                     R<?php echo number_format($total, 2); ?>
                 </strong>
+
             </div>
 
             <p class="muted">
@@ -390,9 +484,41 @@ if (empty($_SESSION["checkout_token"])) {
             <a class="button" href="cart.php">
                 Edit Cart
             </a>
+
         </aside>
 
     </div>
+
 </main>
+
+<script>
+document.querySelector("form").addEventListener("submit", function(event) {
+
+    const phone = document.getElementById("delivery_phone");
+    const address = document.getElementById("delivery_address");
+
+    const phonePattern = /^(\+27|0)[6-8][0-9]{8}$/;
+
+    if (!phonePattern.test(phone.value.trim())) {
+        alert("Please enter a valid South African mobile number.");
+        phone.focus();
+        event.preventDefault();
+        return;
+    }
+
+    if (
+        address.value.trim().length < 5 ||
+        address.value.trim().length > 255 ||
+        !/[A-Za-z]/.test(address.value.trim())
+    ) {
+        alert("Please enter a valid delivery street address.");
+        address.focus();
+        event.preventDefault();
+        return;
+    }
+
+});
+</script>
+
 </body>
 </html>

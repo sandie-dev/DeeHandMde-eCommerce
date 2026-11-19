@@ -1,3 +1,4 @@
+
 <?php
 require_once "includes/database.php";
 require_once "payfast_config.php";
@@ -25,12 +26,15 @@ if (!hash_equals($expectedSignature, $receivedSignature)) {
 }
 
 $merchantId = (string)($pfData["merchant_id"] ?? "");
+
 $orderId = filter_var(
     $pfData["m_payment_id"] ?? null,
     FILTER_VALIDATE_INT
 );
+
 $paymentStatus = (string)($pfData["payment_status"] ?? "");
 $paymentId = trim((string)($pfData["pf_payment_id"] ?? ""));
+
 $amountGross = filter_var(
     $pfData["amount_gross"] ?? null,
     FILTER_VALIDATE_FLOAT
@@ -100,17 +104,18 @@ if (
     exit("Notification validation failed");
 }
 
-
 try {
     $pdo->beginTransaction();
 
     // Lock the order while processing its payment.
     $stmt = $pdo->prepare(
-        "SELECT id, total, status, stock_deducted
+        "SELECT id, total, status, payment_status,
+                delivery_status, stock_deducted
          FROM orders
          WHERE id = ?
          FOR UPDATE"
     );
+
     $stmt->execute([$orderId]);
     $order = $stmt->fetch(PDO::FETCH_ASSOC);
 
@@ -120,35 +125,50 @@ try {
 
     // Verify the payment amount.
     if (abs((float)$order["total"] - (float)$amountGross) > 0.01) {
-        throw new RuntimeException("Payment amount mismatch for order " . $orderId);
+        throw new RuntimeException(
+            "Payment amount mismatch for order " . $orderId
+        );
     }
 
     // A completed order with stock already deducted is a duplicate ITN.
-    if ($order["status"] === "Paid" && (int)$order["stock_deducted"] === 1) {
+    if (
+        $order["payment_status"] === "Paid" &&
+        (int)$order["stock_deducted"] === 1
+    ) {
         $pdo->commit();
         http_response_code(200);
         exit("Already processed");
     }
 
     // Do not automatically process older paid orders with an unset flag.
-    if ($order["status"] === "Paid") {
-        error_log("Paid order " . $orderId . " requires stock review.");
+    if ($order["payment_status"] === "Paid") {
+        error_log(
+            "Paid order " . $orderId .
+            " requires stock review."
+        );
+
         $pdo->rollBack();
         http_response_code(200);
         exit("Paid order requires stock review");
     }
 
-    // Handle cancellation only while the order is pending.
+    // Handle cancellation only while payment is pending.
     if ($paymentStatus === "CANCELLED") {
+
         $stmt = $pdo->prepare(
             "UPDATE orders
-             SET status = 'Cancelled',
+             SET payment_status = 'Cancelled',
+                 status = 'Cancelled',
                  payment_reference = ?
-             WHERE id = ? AND status = 'Pending'"
+             WHERE id = ?
+               AND payment_status = 'Pending'
+               AND stock_deducted = 0"
         );
+
         $stmt->execute([$paymentId, $orderId]);
 
         $pdo->commit();
+
         http_response_code(200);
         exit("OK");
     }
@@ -156,12 +176,20 @@ try {
     // Only a completed payment can deduct stock.
     if ($paymentStatus !== "COMPLETE") {
         $pdo->commit();
+
         http_response_code(200);
         exit("No completed payment to process");
     }
 
-    if ($order["status"] !== "Pending" || (int)$order["stock_deducted"] !== 0) {
-        throw new RuntimeException("Order is not eligible for processing.");
+    // A cancelled or otherwise processed order cannot be paid through
+    // this processing path.
+    if (
+        $order["payment_status"] !== "Pending" ||
+        (int)$order["stock_deducted"] !== 0
+    ) {
+        throw new RuntimeException(
+            "Order is not eligible for processing."
+        );
     }
 
     // Aggregate quantities in case a product appears more than once.
@@ -171,20 +199,26 @@ try {
          WHERE order_id = ?
          GROUP BY product_id"
     );
+
     $stmt->execute([$orderId]);
     $items = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
     if (!$items) {
-        throw new RuntimeException("No items found for order " . $orderId);
+        throw new RuntimeException(
+            "No items found for order " . $orderId
+        );
     }
 
     // Lock and validate every product before deducting any stock.
     foreach ($items as $item) {
+
         $productId = (int)$item["product_id"];
         $quantity = (int)$item["quantity"];
 
         if ($quantity < 1) {
-            throw new RuntimeException("Invalid quantity for product " . $productId);
+            throw new RuntimeException(
+                "Invalid quantity for product " . $productId
+            );
         }
 
         $stmt = $pdo->prepare(
@@ -193,11 +227,14 @@ try {
              WHERE id = ?
              FOR UPDATE"
         );
+
         $stmt->execute([$productId]);
         $product = $stmt->fetch(PDO::FETCH_ASSOC);
 
         if (!$product) {
-            throw new RuntimeException("Product not found: " . $productId);
+            throw new RuntimeException(
+                "Product not found: " . $productId
+            );
         }
 
         if ((int)$product["stock"] < $quantity) {
@@ -208,8 +245,9 @@ try {
         }
     }
 
-    // Deduct stock, guarding against negative quantities in stock.
+    // Deduct stock, guarding against negative stock quantities.
     foreach ($items as $item) {
+
         $productId = (int)$item["product_id"];
         $quantity = (int)$item["quantity"];
 
@@ -218,27 +256,40 @@ try {
              SET stock = stock - ?
              WHERE id = ? AND stock >= ?"
         );
-        $stmt->execute([$quantity, $productId, $quantity]);
+
+        $stmt->execute([
+            $quantity,
+            $productId,
+            $quantity
+        ]);
 
         if ($stmt->rowCount() !== 1) {
-            throw new RuntimeException("Stock deduction failed for product " . $productId);
+            throw new RuntimeException(
+                "Stock deduction failed for product " . $productId
+            );
         }
     }
 
-    // Mark payment and stock processing together.
+    // Mark payment as paid, start delivery processing,
+    // and record stock deduction together.
     $stmt = $pdo->prepare(
         "UPDATE orders
-         SET status = 'Paid',
+         SET payment_status = 'Paid',
+             delivery_status = 'Processing',
+             status = 'Paid',
              payment_reference = ?,
              stock_deducted = 1
          WHERE id = ?
-           AND status = 'Pending'
+           AND payment_status = 'Pending'
            AND stock_deducted = 0"
     );
+
     $stmt->execute([$paymentId, $orderId]);
 
     if ($stmt->rowCount() !== 1) {
-        throw new RuntimeException("Could not mark order as paid: " . $orderId);
+        throw new RuntimeException(
+            "Could not mark order as paid: " . $orderId
+        );
     }
 
     $pdo->commit();
@@ -247,11 +298,15 @@ try {
     echo "OK";
 
 } catch (Throwable $e) {
+
     if ($pdo->inTransaction()) {
         $pdo->rollBack();
     }
 
-    error_log("PayFast notification error: " . $e->getMessage());
+    error_log(
+        "PayFast notification error: " . $e->getMessage()
+    );
+
     http_response_code(500);
     echo "Processing error";
 }

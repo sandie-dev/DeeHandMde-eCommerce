@@ -30,7 +30,6 @@ if ($search !== "") {
 
     $sql = "SELECT * FROM products
             WHERE active = 1
-            AND stock > 0
             AND (
                 name LIKE :search
                 OR description LIKE :search
@@ -47,7 +46,6 @@ if ($search !== "") {
 
     $sql = "SELECT * FROM products
             WHERE active = 1
-            AND stock > 0
             ORDER BY created_at DESC";
 
     $stmt = $pdo->query($sql);
@@ -193,77 +191,97 @@ function displayProducts($products)
                 <?php echo $stock; ?> available
             </p>
 
-            <?php if ($inCart && $quantity > 0): ?>
+           <?php if ($stock <= 0): ?>
 
-                <!-- Item already in cart -->
-                <div class="quantity-controller">
+    <p class="stock-info out-of-stock-label">
+        Out of Stock
+    </p>
 
-                    <form action="cart.php" method="POST">
-                        <input type="hidden" name="csrf_token"
-                            value="<?php echo htmlspecialchars($_SESSION["cart_token"]); ?>">
-                        <input type="hidden" name="action" value="update">
-                        <input type="hidden" name="product_id"
-                            value="<?php echo $id; ?>">
-                        <input type="hidden" name="quantity"
-                            value="<?php echo max(0, $quantity - 1); ?>">
+    <button type="button" class="add-cart-btn" disabled>
+        Out of Stock
+    </button>
 
-                        <button type="submit"
-                            class="quantity-btn"
-                            aria-label="Decrease quantity">
-                            −
-                        </button>
-                    </form>
+<?php else: ?>
 
-                    <span class="quantity-number">
-                        <?php echo $quantity; ?>
-                    </span>
+    <p class="stock-info">
+        <?php echo $stock; ?> available
+    </p>
 
-                    <form action="cart.php" method="POST">
-                        <input type="hidden" name="csrf_token"
-                            value="<?php echo htmlspecialchars($_SESSION["cart_token"]); ?>">
-                        <input type="hidden" name="action" value="update">
-                        <input type="hidden" name="product_id"
-                            value="<?php echo $id; ?>">
-                        <input type="hidden" name="quantity"
-                            value="<?php echo min($stock, $quantity + 1); ?>">
+    <?php if ($inCart && $quantity > 0): ?>
 
-                        <button type="submit"
-                            class="quantity-btn"
-                            aria-label="Increase quantity"
-                            <?php echo ($quantity >= $stock) ? "disabled" : ""; ?>>
-                            +
-                        </button>
-                    </form>
+        <!-- Item already in cart -->
+        <div class="quantity-controller">
 
-                </div>
+            <form action="cart.php" method="POST">
+                <input type="hidden" name="csrf_token"
+                    value="<?php echo htmlspecialchars($_SESSION["cart_token"]); ?>">
+                <input type="hidden" name="action" value="update">
+                <input type="hidden" name="product_id"
+                    value="<?php echo $id; ?>">
+                <input type="hidden" name="quantity"
+                    value="<?php echo max(0, $quantity - 1); ?>">
 
-                <p class="added-message">
-                    Added to your cart
-                </p>
+                <button type="submit"
+                    class="quantity-btn"
+                    aria-label="Decrease quantity">
+                    −
+                </button>
+            </form>
 
-            <?php else: ?>
+            <span class="quantity-number">
+                <?php echo $quantity; ?>
+            </span>
 
-                <!-- Add item with quantity 1 -->
-                <form action="cart.php" method="POST">
+            <form action="cart.php" method="POST">
+                <input type="hidden" name="csrf_token"
+                    value="<?php echo htmlspecialchars($_SESSION["cart_token"]); ?>">
+                <input type="hidden" name="action" value="update">
+                <input type="hidden" name="product_id"
+                    value="<?php echo $id; ?>">
+                <input type="hidden" name="quantity"
+                    value="<?php echo min($stock, $quantity + 1); ?>">
 
-                    <input type="hidden" name="csrf_token"
-                        value="<?php echo htmlspecialchars($_SESSION["cart_token"]); ?>">
+                <button type="submit"
+                    class="quantity-btn"
+                    aria-label="Increase quantity"
+                    <?php echo ($quantity >= $stock) ? "disabled" : ""; ?>>
+                    +
+                </button>
+            </form>
 
-                    <input type="hidden" name="action" value="add">
+        </div>
 
-                    <input type="hidden" name="product_id"
-                        value="<?php echo $id; ?>">
+        <p class="added-message">
+            Added to your cart
+        </p>
 
-                    <input type="hidden" name="quantity" value="1">
-					<input type="hidden" name="return_to" value="main.php#product-<?php echo $id; ?>">
+    <?php else: ?>
 
-                    <button type="submit" class="add-cart-btn">
-                        Add to Cart
-                    </button>
+        <!-- Add item with quantity 1 -->
+        <form action="cart.php" method="POST">
 
-                </form>
+            <input type="hidden" name="csrf_token"
+                value="<?php echo htmlspecialchars($_SESSION["cart_token"]); ?>">
 
-            <?php endif; ?>
+            <input type="hidden" name="action" value="add">
+
+            <input type="hidden" name="product_id"
+                value="<?php echo $id; ?>">
+
+            <input type="hidden" name="quantity" value="1">
+
+            <input type="hidden" name="return_to"
+                value="main.php#product-<?php echo $id; ?>">
+
+            <button type="submit" class="add-cart-btn">
+                Add to Cart
+            </button>
+
+        </form>
+
+    <?php endif; ?>
+
+<?php endif; ?>
 			
 			
             <!-- Product review section -->
@@ -960,6 +978,18 @@ function displayProducts($products)
             color: var(--muted);
             padding: 20px 0;
         }
+		
+		.out-of-stock-label {
+    color: #a33;
+    font-weight: bold;
+}
+
+.add-cart-btn:disabled {
+    background: #999;
+    border-color: #999;
+    cursor: not-allowed;
+    opacity: 0.8;
+}
 
         /* FOOTER */
 

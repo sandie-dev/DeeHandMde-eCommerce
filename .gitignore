@@ -8,6 +8,7 @@ config/secrets.php
 includes/database.php
 includes/mail_config.php
 payfast_config.php
+paystack_config.php 
 
 # Database exports and backups
 *.sql

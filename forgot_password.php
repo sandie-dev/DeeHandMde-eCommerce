@@ -68,8 +68,28 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                 // Local development URL.
                 // Change this to your current public HTTPS URL
                 // when testing through ngrok.
-                $resetLink = "http://localhost/deeHandMade/reset_password.php?token="
-                           . urlencode($token);
+              // Automatically select the correct website URL.
+$host = strtolower(
+    preg_replace('/:\d+$/', '', $_SERVER["HTTP_HOST"] ?? "")
+);
+
+if ($host === "localhost" || $host === "127.0.0.1") {
+
+    // Local XAMPP website.
+    $baseUrl = "http://localhost/deeHandMade";
+
+} elseif ($host === "deehandmade.ct.ws") {
+
+    // Hosted InfinityFree website.
+    $baseUrl = "https://deehandmade.ct.ws";
+
+} else {
+
+    throw new RuntimeException("Unrecognised website address.");
+}
+
+$resetLink = $baseUrl . "/reset_password.php?token="
+           . urlencode($token);
 
                 $mail = new PHPMailer(true);
 

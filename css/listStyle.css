@@ -1,0 +1,117 @@
+
+/* STOCK ADMIN PAGE */
+
+.page-container {
+    width: 95%;
+    max-width: 1250px;
+    margin: 35px auto;
+    padding: 30px;
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 3px 12px rgba(0, 0, 0, 0.06);
+}
+
+.page-container h2 {
+    color: #4e2d1f;
+    font-size: 28px;
+    margin-bottom: 8px;
+}
+
+.page-container > p {
+    color: #777;
+    line-height: 1.6;
+}
+
+.table-wrapper {
+    width: 100%;
+    overflow-x: auto;
+    margin-top: 25px;
+    border: 1px solid #eadfd7;
+    border-radius: 9px;
+}
+
+.table-wrapper table {
+    width: 100%;
+    min-width: 750px;
+    border-collapse: collapse;
+}
+
+.table-wrapper th {
+    background: #f2e9e2;
+    color: #4e2d1f;
+    padding: 16px;
+    text-align: left;
+    white-space: nowrap;
+}
+
+.table-wrapper td {
+    padding: 16px;
+    border-top: 1px solid #eee5df;
+    vertical-align: middle;
+}
+
+.table-wrapper tbody tr:hover {
+    background: #fcf9f6;
+}
+
+.stock-form {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.stock-form input {
+    width: 100px;
+    padding: 10px;
+    border: 1px solid #d5c8bf;
+    border-radius: 6px;
+    font-size: 14px;
+}
+
+.stock-form input:focus {
+    outline: 2px solid #c9a58e;
+    border-color: #6b3f2a;
+}
+
+.stock-form button {
+    padding: 10px 15px;
+    background: #6b3f2a;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 600;
+}
+
+.stock-form button:hover {
+    background: #4e2d1f;
+}
+
+.inactive {
+    color: #a12626;
+    font-weight: bold;
+}
+
+@media (max-width: 768px) {
+    .page-container {
+        width: 94%;
+        padding: 18px;
+        margin: 20px auto;
+    }
+
+    .page-container h2 {
+        font-size: 23px;
+    }
+}
+
+@media (max-width: 480px) {
+    .page-container {
+        width: 96%;
+        padding: 14px;
+    }
+
+    .stock-form input {
+        width: 85px;
+    }
+}

@@ -1,36 +1,151 @@
-/* Products page */
-        .page-container { 
-            max-width: 1200px; 
-			margin: 30px auto; 
-			padding: 20px;
-		}
-        .table-wrapper {
-			overflow-x: auto;
-		}
-		
-        .action-link { 
-		  margin-right: 10px;
-		}
-        .add-button, .edit-button, .delet-button, .action-button {
-            display: inline-block; 
-			padding: 10px 14px;
-            background: #6b3f2a; 
-			color: white;
-            text-decoration: none; 
-			border: none; 
-			border-radius: 5px;
-            cursor: pointer;
-        }
-        .status-active {
-			color: green;
- 			font-weight: bold;
-			}
-        .status-inactive {
-			color: #a33;
-			font-weight: bold;
-		}
-        .product-image {
-			width: 65px; 
-			height: 65px;
-			object-fit: cover;
-		}
+
+/* PRODUCTS ADMIN PAGE */
+
+.page-container {
+    width: 95%;
+    max-width: 1250px;
+    margin: 35px auto;
+    padding: 30px;
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 3px 12px rgba(0, 0, 0, 0.06);
+}
+
+.page-container h2 {
+    color: #4e2d1f;
+    font-size: 28px;
+    margin: 0 0 8px;
+}
+
+.page-container > p {
+    color: #777;
+    margin-bottom: 24px;
+    line-height: 1.6;
+}
+
+.add-button {
+    display: inline-block;
+    padding: 11px 17px;
+    background: #6b3f2a;
+    color: white;
+    text-decoration: none;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 600;
+    transition: background 0.2s ease;
+}
+
+.add-button:hover {
+    background: #4e2d1f;
+}
+
+.table-wrapper {
+    width: 100%;
+    overflow-x: auto;
+    margin-top: 25px;
+    border: 1px solid #eadfd7;
+    border-radius: 9px;
+}
+
+.table-wrapper table {
+    width: 100%;
+    min-width: 850px;
+    border-collapse: collapse;
+    background: white;
+}
+
+.table-wrapper th {
+    background: #f2e9e2;
+    color: #4e2d1f;
+    padding: 16px 14px;
+    text-align: left;
+    font-size: 14px;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.table-wrapper td {
+    padding: 15px 14px;
+    border-top: 1px solid #eee5df;
+    color: #444;
+    font-size: 14px;
+    vertical-align: middle;
+}
+
+.table-wrapper tbody tr:hover {
+    background: #fcf9f6;
+}
+
+.product-image {
+    width: 68px;
+    height: 68px;
+    object-fit: cover;
+    border-radius: 7px;
+    border: 1px solid #eee;
+}
+
+.status-active {
+    display: inline-block;
+    color: #216b32;
+    background: #e7f5e9;
+    padding: 6px 11px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: bold;
+}
+
+.status-inactive {
+    display: inline-block;
+    color: #a12626;
+    background: #fdeaea;
+    padding: 6px 11px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: bold;
+}
+
+.table-wrapper td form {
+    display: inline-block;
+    margin: 5px 0 0 5px;
+}
+
+.table-wrapper td .add-button {
+    padding: 8px 12px;
+    font-size: 12px;
+}
+
+/* Smaller screens */
+@media (max-width: 768px) {
+    .page-container {
+        width: 94%;
+        margin: 20px auto;
+        padding: 18px;
+    }
+
+    .page-container h2 {
+        font-size: 23px;
+    }
+
+    .table-wrapper th,
+    .table-wrapper td {
+        padding: 12px 10px;
+    }
+}
+
+@media (max-width: 480px) {
+    .page-container {
+        width: 96%;
+        padding: 14px;
+    }
+
+    .page-container h2 {
+        font-size: 21px;
+    }
+
+    .add-button {
+        padding: 9px 12px;
+        font-size: 13px;
+    }
+}

@@ -1,0 +1,7 @@
+Options -Indexes
+
+<FilesMatch "^(payFast_config\.php)$">
+    Require all denied
+</FilesMatch>
+Options -Indexes
+

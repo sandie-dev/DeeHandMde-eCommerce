@@ -1,0 +1,167 @@
+
+/* ORDERS ADMIN PAGE */
+
+.page-container {
+    width: 95%;
+    max-width: 1250px;
+    margin: 35px auto;
+    padding: 30px;
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 3px 12px rgba(0, 0, 0, 0.06);
+}
+
+.page-container h2 {
+    color: #4e2d1f;
+    font-size: 28px;
+    margin-bottom: 8px;
+}
+
+.order-card {
+    background: #fffdfb;
+    padding: 24px;
+    margin: 22px 0;
+    border: 1px solid #eadfd7;
+    border-left: 5px solid #9b7058;
+    border-radius: 10px;
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.05);
+}
+
+.order-card h3 {
+    color: #4e2d1f;
+    margin-top: 0;
+    margin-bottom: 15px;
+}
+
+.order-details {
+    line-height: 1.8;
+    color: #555;
+}
+
+.status-form {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    align-items: center;
+    margin: 15px 0;
+}
+
+.status-form select {
+    min-width: 150px;
+    padding: 10px 12px;
+    border: 1px solid #d5c8bf;
+    border-radius: 6px;
+    background: white;
+}
+
+.status-form button {
+    padding: 10px 16px;
+    border-radius: 6px;
+    background: #6b3f2a;
+    color: white;
+    border: none;
+    cursor: pointer;
+    font-weight: 600;
+}
+
+.status-form button:hover {
+    background: #4e2d1f;
+}
+
+.status-badge {
+    display: inline-block;
+    padding: 6px 12px;
+    border-radius: 20px;
+    background: #f2e9e2;
+    color: #4e2d1f;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.order-items {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 18px;
+    min-width: 450px;
+}
+
+.order-items th {
+    background: #f2e9e2;
+    color: #4e2d1f;
+    padding: 13px;
+    text-align: left;
+}
+
+.order-items td {
+    padding: 13px;
+    border-bottom: 1px solid #eee5df;
+    text-align: left;
+}
+
+.order-items tr:last-child td {
+    border-bottom: none;
+}
+
+.table-wrapper {
+    width: 100%;
+    overflow-x: auto;
+}
+
+.success {
+    background: #e7f5e9;
+    color: #216b32;
+    padding: 13px;
+    border-radius: 7px;
+    margin: 15px 0;
+}
+
+.error {
+    background: #fdeaea;
+    color: #a12626;
+    padding: 13px;
+    border-radius: 7px;
+    margin: 15px 0;
+}
+
+.no-action {
+    color: #777;
+    font-size: 14px;
+}
+
+@media (max-width: 768px) {
+    .page-container {
+        width: 94%;
+        padding: 18px;
+        margin: 20px auto;
+    }
+
+    .page-container h2 {
+        font-size: 23px;
+    }
+
+    .order-card {
+        padding: 17px;
+    }
+}
+
+@media (max-width: 480px) {
+    .page-container {
+        width: 96%;
+        padding: 14px;
+    }
+
+    .order-card {
+        padding: 14px;
+        margin: 16px 0;
+    }
+
+    .status-form {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .status-form select,
+    .status-form button {
+        width: 100%;
+    }
+}

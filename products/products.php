@@ -3,6 +3,9 @@ require_once "../includes/authentication.php";
 require_once "../includes/database.php";
 
 requireAdmin();
+if (empty($_SESSION["product_status_token"])) {
+    $_SESSION["product_status_token"] = bin2hex(random_bytes(32));
+}
 
 $stmt = $pdo->query(
     "SELECT * FROM products ORDER BY id DESC"
@@ -17,6 +20,7 @@ $products = $stmt->fetchAll(PDO::FETCH_ASSOC);
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Manage Products - DeeHandMade</title>
     <link rel="stylesheet" href="../css/style.css">
+    <link rel="stylesheet" href="../css/listStyle.css">
 	<link rel="stylesheet" href="../css/adminProductsStyle.css">
   <!--  <style>
         .page-container { max-width: 1200px; margin: 30px auto; padding: 20px; }
@@ -35,11 +39,11 @@ $products = $stmt->fetchAll(PDO::FETCH_ASSOC);
 	--!>
 </head>
 <body>
-
+<?php require_once __DIR__ . "/../includes/backButton.php"; ?>
 <header>
     <h1>DeeHandMade Admin</h1>
     <nav>
-        <a href="admin.php">Dashboard</a>
+        <a href="../admin.php">Dashboard</a>
         <a href="products.php">Products</a>
         <a href="stock.php">Stock</a>
         <a href="orders.php">Orders</a>
@@ -99,21 +103,41 @@ $products = $stmt->fetchAll(PDO::FETCH_ASSOC);
                             <?php endif; ?>
                         </td>
                         <td>
-                            <a class="add-button"
-                               href="editProducts.php?id=<?= (int)$product["id"] ?>">
-                                Edit
-                            </a>
+							<a class="add-button"
+							   href="editProducts.php?id=<?= (int)$product["id"] ?>">
+								Edit
+							</a>
 
-                            <?php if ((int)$product["active"] === 1): ?>
-                                <a class="add-button"
-                                   href="deleteProduct.php?id=<?= (int)$product["id"] ?>"
-                                   onclick="return confirm('Deactivate this product? It will no longer appear in the customer store.');">
-                                    Deactivate
-                                </a>
-                            <?php else: ?>
-                                <span>Inactive</span>
-                            <?php endif; ?>
-                        </td>
+							<form action="toggleProductStatus.php" method="POST"
+								  style="display: inline;">
+
+								<input type="hidden" name="csrf_token"
+									   value="<?= htmlspecialchars($_SESSION["product_status_token"]) ?>">
+
+								<input type="hidden" name="product_id"
+									   value="<?= (int)$product["id"] ?>">
+
+								<?php if ((int)$product["active"] === 1): ?>
+
+									<input type="hidden" name="action" value="deactivate">
+
+									<button type="submit" class="add-button"
+											onclick="return confirm('Deactivate this product? It will no longer appear in the customer store.');">
+										Deactivate
+									</button>
+
+								<?php else: ?>
+
+									<input type="hidden" name="action" value="activate">
+
+									<button type="submit" class="add-button">
+										Reactivate
+									</button>
+
+								<?php endif; ?>
+
+							</form>
+					   </td>
                     </tr>
                 <?php endforeach; ?>
             <?php else: ?>

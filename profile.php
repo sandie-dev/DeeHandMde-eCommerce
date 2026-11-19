@@ -10,9 +10,9 @@ $userId = (int) $_SESSION["user_id"];
 $error = "";
 $success = "";
 
-// Retrieve only the logged-in customer's account.
+// Retrieve the logged-in customer's account.
 $stmt = $pdo->prepare(
-    "SELECT id, name, email, created_at
+    "SELECT id, name, email, delivery_address, created_at
      FROM users
      WHERE id = ? AND role = 'customer'
      LIMIT 1"
@@ -25,51 +25,59 @@ if (!$user) {
     exit;
 }
 
-// CSRF protection for profile updates.
+// CSRF protection.
 if (empty($_SESSION["profile_csrf_token"])) {
     $_SESSION["profile_csrf_token"] = bin2hex(random_bytes(32));
 }
 
-// Update the customer's name.
+// Update the customer's saved delivery address.
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
     $submittedToken = $_POST["csrf_token"] ?? "";
-    $newName = trim($_POST["name"] ?? "");
+    $newAddress = $_POST["delivery_address"] ?? "";
 
     if (
         !is_string($submittedToken) ||
         !hash_equals($_SESSION["profile_csrf_token"], $submittedToken)
     ) {
         $error = "Session verification failed. Please refresh and try again.";
-    } elseif ($newName === "") {
-        $error = "Please enter your name.";
-    } elseif (strlen($newName) > 100) {
-        $error = "Your name cannot exceed 100 characters.";
-    } elseif (preg_match('/[\x00-\x1F\x7F]/', $newName)) {
-        $error = "Please enter a valid name.";
+    } elseif (!is_string($newAddress)) {
+        $error = "Please enter a valid delivery address.";
     } else {
-        try {
-            $update = $pdo->prepare(
-                "UPDATE users
-                 SET name = ?
-                 WHERE id = ? AND role = 'customer'"
-            );
-            $update->execute([$newName, $userId]);
+        $newAddress = trim($newAddress);
 
-            $_SESSION["name"] = $newName;
+        if ($newAddress === "") {
+            $error = "Please enter your delivery address.";
+        } elseif (strlen($newAddress) < 5 || strlen($newAddress) > 255) {
+            $error = "Your address must be between 5 and 255 characters.";
+        } elseif (
+            preg_match('/[\x00-\x1F\x7F]/', $newAddress) ||
+            !preg_match('/[A-Za-z]/', $newAddress)
+        ) {
+            $error = "Please enter a valid street address.";
+        } else {
+            try {
+                $update = $pdo->prepare(
+                    "UPDATE users
+                     SET delivery_address = ?
+                     WHERE id = ? AND role = 'customer'"
+                );
 
-            $user["name"] = $newName;
-            $success = "Your profile has been updated successfully.";
-        } catch (PDOException $e) {
-            error_log("Profile update error: " . $e->getMessage());
-            $error = "Unable to update your profile. Please try again.";
+                $update->execute([$newAddress, $userId]);
+
+                $user["delivery_address"] = $newAddress;
+                $success = "Your delivery address has been updated successfully.";
+            } catch (PDOException $e) {
+                error_log("Profile address update error: " . $e->getMessage());
+                $error = "Unable to update your delivery address. Please try again.";
+            }
         }
     }
 }
 
-// Retrieve only this customer's orders, newest first.
+// Retrieve this customer's orders, newest first.
 $orderStmt = $pdo->prepare(
-    "SELECT id, total, delivery_fee, status, payment_method,
-            created_at, delivery_name, delivery_phone,
+    "SELECT id, total, delivery_fee, payment_status, delivery_status,
+            payment_method, created_at, delivery_name, delivery_phone,
             delivery_address, delivery_city, delivery_postal_code,
             payment_reference
      FROM orders
@@ -79,14 +87,15 @@ $orderStmt = $pdo->prepare(
 $orderStmt->execute([$userId]);
 $orders = $orderStmt->fetchAll(PDO::FETCH_ASSOC);
 
-// Most recent order provides the displayed delivery details.
+// Most recent order.
 $latestOrder = !empty($orders) ? $orders[0] : null;
 
-// Escape values before displaying them in HTML.
+// Escape values before displaying them.
 function profileEscape($value) {
     return htmlspecialchars((string) $value, ENT_QUOTES, "UTF-8");
 }
 ?>
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -248,6 +257,7 @@ function profileEscape($value) {
         .status {
             display: inline-block;
             padding: 4px 10px;
+            margin: 3px 3px 3px 0;
             border-radius: 20px;
             background: #f0e5d9;
             color: #6b3f2a;
@@ -321,7 +331,7 @@ function profileEscape($value) {
 </head>
 
 <body>
-
+<?php require_once __DIR__ . "/includes/backButton.php"; ?>
 <main class="container">
 
     <header class="page-header">
@@ -349,7 +359,48 @@ function profileEscape($value) {
             <?php echo profileEscape(strtoupper(substr($user["name"], 0, 1))); ?>
         </div>
 
+        <div class="form-group">
+            <label for="name">Full name</label>
+            <input
+                type="text"
+                id="name"
+                value="<?php echo profileEscape($user["name"]); ?>"
+                readonly
+            >
+        </div>
+
+        <div class="form-group">
+            <label for="email">Registered email</label>
+            <input
+                type="email"
+                id="email"
+                value="<?php echo profileEscape($user["email"]); ?>"
+                readonly
+            >
+        </div>
+
+        <p class="detail-row">
+            <strong>Customer ID:</strong>
+            <?php echo profileEscape($user["id"]); ?>
+        </p>
+
+        <p class="detail-row">
+            <strong>Member since:</strong>
+            <?php echo profileEscape(date("d M Y", strtotime($user["created_at"]))); ?>
+        </p>
+    </section>
+
+    <!-- SECTION 2: SAVED DELIVERY ADDRESS -->
+    <section class="section-card">
+        <h2>My Saved Delivery Address</h2>
+
+        <p class="muted">
+            Save your usual street address here. It will automatically
+            appear at checkout. You can still change it when placing an order.
+        </p>
+
         <form method="POST" action="profile.php">
+
             <input
                 type="hidden"
                 name="csrf_token"
@@ -357,51 +408,37 @@ function profileEscape($value) {
             >
 
             <div class="form-group">
-                <label for="name">Full name</label>
+                <label for="delivery_address">Street address</label>
+
                 <input
                     type="text"
-                    id="name"
-                    name="name"
-                    maxlength="100"
-                    value="<?php echo profileEscape($user["name"]); ?>"
-                    autocomplete="name"
+                    id="delivery_address"
+                    name="delivery_address"
+                    maxlength="255"
+                    minlength="5"
+                    placeholder="e.g. 15 Main Street, Apartment 4"
+                    value="<?php echo profileEscape($user["delivery_address"] ?? ""); ?>"
+                    autocomplete="street-address"
                     required
                 >
             </div>
 
-            <div class="form-group">
-                <label for="email">Registered email</label>
-                <input
-                    type="email"
-                    id="email"
-                    value="<?php echo profileEscape($user["email"]); ?>"
-                    readonly
-                >
-            </div>
+            <button type="submit" class="button">
+                Save Delivery Address
+            </button>
 
-            <p class="detail-row">
-                <strong>Customer ID:</strong>
-                <?php echo profileEscape($user["id"]); ?>
-            </p>
-
-            <p class="detail-row">
-                <strong>Member since:</strong>
-                <?php echo profileEscape(date("d M Y", strtotime($user["created_at"]))); ?>
-            </p>
-
-            <button type="submit" class="button">Save Changes</button>
         </form>
-    </section>
-
-    <!-- SECTION 2: MOST RECENT DELIVERY DETAILS -->
-    <section class="section-card">
-        <h2>My Delivery Details</h2>
 
         <?php if ($latestOrder): ?>
+
+            <hr style="border: 0; border-top: 1px solid #eadfd5; margin: 25px 0;">
+
+            <h3>Delivery details from your latest order</h3>
+
             <p class="muted">
-                These details are from your most recent order
-                (#<?php echo profileEscape($latestOrder["id"]); ?>).
-                They are not saved separately as default delivery details.
+                These are the details recorded when you placed order
+                #<?php echo profileEscape($latestOrder["id"]); ?>.
+                Updating your saved address does not change previous orders.
             </p>
 
             <p class="detail-row">
@@ -428,11 +465,7 @@ function profileEscape($value) {
                 <strong>Postal code:</strong>
                 <?php echo profileEscape($latestOrder["delivery_postal_code"]); ?>
             </p>
-        <?php else: ?>
-            <p>You haven't placed an order yet, so you don't have delivery details to display.</p>
-            <p class="muted">
-                Your delivery details will appear here after your first order is created.
-            </p>
+
         <?php endif; ?>
     </section>
 
@@ -441,10 +474,13 @@ function profileEscape($value) {
         <h2>My Order History</h2>
 
         <?php if (empty($orders)): ?>
+
             <p>You haven't placed any orders yet.</p>
+
             <p class="muted">
                 When you place an order, its details and payment status will appear here.
             </p>
+
         <?php else: ?>
 
             <p>
@@ -456,7 +492,9 @@ function profileEscape($value) {
             <?php foreach ($orders as $order): ?>
 
                 <article class="order-card">
+
                     <div class="order-heading">
+
                         <div>
                             <h3>
                                 Order #<?php echo profileEscape($order["id"]); ?>
@@ -471,9 +509,18 @@ function profileEscape($value) {
                             </p>
                         </div>
 
-                        <span class="status">
-                            Payment: <?php echo profileEscape($order["status"]); ?>
-                        </span>
+                        <div>
+                            <span class="status">
+                                Payment:
+                                <?php echo profileEscape($order["payment_status"]); ?>
+                            </span>
+
+                            <span class="status">
+                                Delivery:
+                                <?php echo profileEscape($order["delivery_status"]); ?>
+                            </span>
+                        </div>
+
                     </div>
 
                     <p>
@@ -518,6 +565,7 @@ function profileEscape($value) {
                          WHERE oi.order_id = ?
                          ORDER BY oi.id ASC"
                     );
+
                     $itemStmt->execute([(int) $order["id"]]);
                     $items = $itemStmt->fetchAll(PDO::FETCH_ASSOC);
                     ?>
@@ -563,7 +611,9 @@ function profileEscape($value) {
 
                                 <?php if (empty($items)): ?>
                                     <tr>
-                                        <td colspan="4">No order items were found for this order.</td>
+                                        <td colspan="4">
+                                            No order items were found for this order.
+                                        </td>
                                     </tr>
                                 <?php endif; ?>
                             </tbody>
@@ -577,6 +627,7 @@ function profileEscape($value) {
                     ?>
 
                     <div class="totals">
+
                         <div class="total-row">
                             <span>Subtotal</span>
                             <strong>R<?php echo number_format($subtotal, 2); ?></strong>
@@ -591,7 +642,9 @@ function profileEscape($value) {
                             <span>Order total</span>
                             <strong>R<?php echo number_format($grandTotal, 2); ?></strong>
                         </div>
+
                     </div>
+
                 </article>
 
             <?php endforeach; ?>
@@ -605,5 +658,6 @@ function profileEscape($value) {
     </div>
 
 </main>
+
 </body>
 </html>
